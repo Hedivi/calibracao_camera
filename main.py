@@ -1,6 +1,7 @@
 import cv2
 from pathlib import Path
 import numpy as np
+import matplotlib.pyplot as plt
 
 BOARD_SIZE = (7, 7)
 SQUARE_SIZE = 32.0
@@ -38,7 +39,9 @@ for image_path in input_dir.iterdir():
 
     gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    found, corners = cv2.findChessboardCorners(gray_image, BOARD_SIZE)
+    # adicionado flags de otimização
+    flags = cv2.CALIB_CB_ADAPTIVE_THRESH + cv2.CALIB_CB_FAST_CHECK + cv2.CALIB_CB_NORMALIZE_IMAGE
+    found, corners = cv2.findChessboardCorners(gray_image, BOARD_SIZE, flags)
 
     if not found:
         print(f"Tabuleiro não encontrado em: {image_path}")
@@ -48,9 +51,18 @@ for image_path in input_dir.iterdir():
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
     corners_refined = cv2.cornerSubPix(gray_image, corners, (11, 11), (-1, -1), criteria)
 
+    cv2.drawChessboardCorners(image, BOARD_SIZE, corners_refined, found)
+
+    cv2.namedWindow("A Processar Imagens", cv2.WINDOW_NORMAL)
+    cv2.resizeWindow("A Processar Imagens", 800, 600)
+    cv2.imshow("A Processar Imagens", image)
+
+    cv2.waitKey(0)
+
     obj_points.append(get_object_points())
     img_points.append(corners_refined)
 
+cv2.destroyAllWindows()
 image_size = gray_image.shape[::-1]
 rms, K, dist, rvecs, tvecs = cv2.calibrateCamera(obj_points, img_points, image_size, None, None)
 
@@ -95,8 +107,22 @@ for corners in img_points:
             -1
         )
 
-cv2.namedWindow("Distribuicao dos pontos", cv2.WINDOW_NORMAL)
-cv2.resizeWindow("Distribuicao dos pontos", 600, 800)
+import matplotlib.pyplot as plt
 
-cv2.imshow("Distribuicao dos pontos", canvas)
-cv2.waitKey(0)
+# Converter as cores de BGR (padrão do OpenCV) para RGB (padrão do Matplotlib)
+comparison_rgb = cv2.cvtColor(comparison, cv2.COLOR_BGR2RGB)
+canvas_rgb = cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB)
+
+# Criar a figura gráfica com o Matplotlib
+fig, axes = plt.subplots(1, 2, figsize=(16, 8))
+
+axes[0].imshow(comparison_rgb)
+axes[0].set_title("Original | Corrigida")
+axes[0].axis('off')
+
+axes[1].imshow(canvas_rgb)
+axes[1].set_title("Distribuição dos pontos")
+axes[1].axis('off')
+
+plt.tight_layout()
+plt.show()
